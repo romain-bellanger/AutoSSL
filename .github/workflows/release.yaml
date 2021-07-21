@@ -21,7 +21,20 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build
+          pip install build, packaging
+      - name: Check version tag is PEP440 compliant and set the package version
+        run: |
+          export PACKAGE_VERSION=$(echo ${{github.ref}} | sed 's#refs/tags/v##')
+          cat <<EOF | python; echo $?
+          import os, re, packaging.version
+          exit(0 if re.match(packaging.version.VERSION_PATTERN, os.environ["PACKAGE_VERSION"], re.VERBOSE) else 1)
+          EOF
+          sed "s/^__version__ *=.*$/__version__ = ${PACKAGE_VERSION}/" autossl/__version__.py
+      - uses: EndBug/add-and-commit@v7
+        with:
+          add: autossl/__version__.py
+          default_author: github_actions
+          message: 'Set the release version'
       - name: Build package
         run: python -m build
       - name: Publish package
